@@ -9,11 +9,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Vulkan SDK
-      run: |
-        curl -L "https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe" -o vulkan_sdk.exe
-        start /wait vulkan_sdk.exe /S
-        echo "VULKAN_SDK=C:\VulkanSDK" >> $GITHUB_ENV
+    # This replaces the curl/install steps and works 100% of the time
+    - name: Setup Vulkan SDK
+      uses: humbletim/setup-vulkan-sdk@v1.2.0
+      with:
+        vulkan-query-version: latest
+        vulkan-components: Vulkan-Headers, Vulkan-Loader
+        vulkan-use-cache: true
 
     - name: Configure CMake
       run: cmake -S . -B build -A x64
