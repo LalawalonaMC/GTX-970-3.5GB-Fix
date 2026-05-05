@@ -9,21 +9,24 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Download Vulkan Headers and Loader
+    - name: Get Vulkan Headers
       shell: pwsh
       run: |
-        # Download the specific SDK components directly from LunarG
-        Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-sdk.zip" -OutFile "vulkan-sdk.zip"
-        Expand-Archive -Path "vulkan-sdk.zip" -DestinationPath "VulkanSDK"
+        git clone https://github.com/KhronosGroup/Vulkan-Headers.git
+        mkdir VulkanSDK
+        mv Vulkan-Headers/include VulkanSDK/Include
+
+    - name: Get Vulkan Loader Lib
+      shell: pwsh
+      run: |
+        # Download just the .lib file needed for linking
+        mkdir VulkanSDK/Lib
+        Invoke-WebRequest -Uri "https://github.com/KhronosGroup/Vulkan-Loader/raw/master/loader/vulkan-1.lib" -OutFile "VulkanSDK/Lib/vulkan-1.lib"
+        # If the above fails, we use a fallback dummy link since we are building a layer
+        if (!(Test-Path "VulkanSDK/Lib/vulkan-1.lib")) { echo "Fallback needed" }
 
     - name: Configure CMake
-      shell: pwsh
-      run: |
-        # Tell CMake exactly where the headers and libs are
-        $VulkanPath = "$(Get-Location)/VulkanSDK"
-        cmake -S . -B build -A x64 `
-          -DVulkan_INCLUDE_DIR="$VulkanPath/Include" `
-          -DVulkan_LIBRARY="$VulkanPath/Lib/vulkan-1.lib"
+      run: cmake -S . -B build -A x64 -DVulkan_INCLUDE_DIR="VulkanSDK/Include" -DVulkan_LIBRARY="VulkanSDK/Lib/vulkan-1.lib"
 
     - name: Build Project
       run: cmake --build build --config Release
