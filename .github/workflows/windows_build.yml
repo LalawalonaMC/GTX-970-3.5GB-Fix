@@ -1,0 +1,31 @@
+name: Build VRAM Fix
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Vulkan SDK
+      run: |
+        curl -L "https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe" -o vulkan_sdk.exe
+        start /wait vulkan_sdk.exe /S
+        echo "VULKAN_SDK=C:\VulkanSDK" >> $GITHUB_ENV
+
+    - name: Configure CMake
+      run: cmake -S . -B build -A x64
+
+    - name: Build Project
+      run: cmake --build build --config Release
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: GTX-970-3.5GB-Fix-Binaries
+        path: |
+          build/Release/GTX970Fix.dll
+          build/Release/VramTest.exe
+          GTX970Fix.json
