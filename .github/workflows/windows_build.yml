@@ -9,24 +9,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Get Vulkan Headers
-      shell: pwsh
-      run: |
-        git clone https://github.com/KhronosGroup/Vulkan-Headers.git
-        mkdir VulkanSDK
-        mv Vulkan-Headers/include VulkanSDK/Include
-
-    - name: Get Vulkan Loader Lib
-      shell: pwsh
-      run: |
-        # Download just the .lib file needed for linking
-        mkdir VulkanSDK/Lib
-        Invoke-WebRequest -Uri "https://github.com/KhronosGroup/Vulkan-Loader/raw/master/loader/vulkan-1.lib" -OutFile "VulkanSDK/Lib/vulkan-1.lib"
-        # If the above fails, we use a fallback dummy link since we are building a layer
-        if (!(Test-Path "VulkanSDK/Lib/vulkan-1.lib")) { echo "Fallback needed" }
-
     - name: Configure CMake
-      run: cmake -S . -B build -A x64 -DVulkan_INCLUDE_DIR="VulkanSDK/Include" -DVulkan_LIBRARY="VulkanSDK/Lib/vulkan-1.lib"
+      shell: pwsh
+      run: |
+        # Use the Vulkan SDK that is pre-installed on the runner image
+        $VulkanRoot = $env:VULKAN_SDK
+        cmake -S . -B build -A x64 `
+          -DVulkan_INCLUDE_DIR="$VulkanRoot/Include" `
+          -DVulkan_LIBRARY="$VulkanRoot/Lib/vulkan-1.lib"
 
     - name: Build Project
       run: cmake --build build --config Release
