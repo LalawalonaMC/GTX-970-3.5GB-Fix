@@ -1,27 +1,38 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_layer.h>
-#include <vector>
-#include <cstring>
+#include <string.h>
 
-// The target limit: 3.5GB, 375.. is around 3.5gb in bytes..
-const VkDeviceSize LIMIT_35GB = 3758096384ULL; 
-
-// Intercept function
+// Your Hook Function
 VKAPI_ATTR void VKAPI_CALL Hook_GetPhysicalDeviceMemoryProperties(
     VkPhysicalDevice physicalDevice,
     VkPhysicalDeviceMemoryProperties* pMemoryProperties) 
 {
-    // 1. Get the actual properties from the driver
-    // In a real layer, you'd use the dispatch table, but here's the logic:
-    // im too lazy for a real implementation for now
+    // Call the real driver first (simplified logic for now)
+    // Then apply your cap
+    const VkDeviceSize LIMIT_35GB = 3758096384ULL; 
     
     for (uint32_t i = 0; i < pMemoryProperties->memoryHeapCount; i++) {
-        // If it's the main VRAM heap and it's 4GB
         if ((pMemoryProperties->memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) &&
             (pMemoryProperties->memoryHeaps[i].size > LIMIT_35GB)) {
-            
-            // Force it to 3.5GB
             pMemoryProperties->memoryHeaps[i].size = LIMIT_35GB;
         }
+    }
+}
+
+// THE HANDSHAKE: This tells Vulkan your DLL is a real layer
+extern "C" {
+    VK_LAYER_EXPORT VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface* pVersionStruct) {
+        if (pVersionStruct->loaderLayerInterfaceVersion < 2) return VK_ERROR_INITIALIZATION_FAILED;
+        pVersionStruct->loaderLayerInterfaceVersion = 2;
+        return VK_SUCCESS;
+    }
+
+    VK_LAYER_EXPORT PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance, const char* pName) {
+        if (strcmp(pName, "vkGetPhysicalDeviceMemoryProperties") == 0) return (PFN_vkVoidFunction)Hook_GetPhysicalDeviceMemoryProperties;
+        return nullptr;
+    }
+
+    VK_LAYER_EXPORT PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice device, const char* pName) {
+        return nullptr;
     }
 }
