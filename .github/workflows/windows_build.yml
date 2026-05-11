@@ -1,22 +1,25 @@
 name: Build VRAM Fix
-
 on: [push, pull_request]
 
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
     - uses: actions/checkout@v4
 
+    # 1. Install the Vulkan SDK on the runner
+    - name: Setup Vulkan SDK
+      uses: humbletim/setup-vulkan-sdk@v1.2.0
+      with:
+        vulkan-query-version: latest
+        vulkan-components: Vulkan-Headers, Vulkan-Loader
+        vulkan-use-cache: true
+
+    # 2. Configure CMake (Simplified)
+    # The Setup step above sets $env:VULKAN_SDK automatically.
+    # find_package(Vulkan) in your CMakeLists.txt will now work.
     - name: Configure CMake
-      shell: pwsh
-      run: |
-        # Use the Vulkan SDK that is pre-installed on the runner image
-        $VulkanRoot = $env:VULKAN_SDK
-        cmake -S . -B build -A x64 `
-          -DVulkan_INCLUDE_DIR="$VulkanRoot/Include" `
-          -DVulkan_LIBRARY="$VulkanRoot/Lib/vulkan-1.lib"
+      run: cmake -S . -B build -A x64
 
     - name: Build Project
       run: cmake --build build --config Release
